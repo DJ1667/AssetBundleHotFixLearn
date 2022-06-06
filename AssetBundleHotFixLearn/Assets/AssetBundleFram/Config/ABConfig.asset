@@ -17,3 +17,5 @@ MonoBehaviour:
   m_AllFileDirAB:
   - abName: mat
     path: Assets/Res/Mat
+  m_ABBytePath: Assets/AssetBundleConfig.bytes
+  m_XmlPath: Assets/AssetBundleConfig.xml

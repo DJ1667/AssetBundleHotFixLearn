@@ -1,6 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <AssetBundleConfig xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-  <ABList Path="Assets/Res/Prefab/Capsule.prefab" Crc="1712870582" ABName="capsule" AssetName="Capsule.prefab" ABDepends="" />
   <ABList Path="Assets/Res/Prefab/Cube.prefab" Crc="2207473334" ABName="cube" AssetName="Cube.prefab" ABDepends="mat" />
   <ABList Path="Assets/Res/Mat/Blue.mat" Crc="2494618852" ABName="mat" AssetName="Blue.mat" ABDepends="" />
   <ABList Path="Assets/Res/Mat/Red.mat" Crc="964502701" ABName="mat" AssetName="Red.mat" ABDepends="" />

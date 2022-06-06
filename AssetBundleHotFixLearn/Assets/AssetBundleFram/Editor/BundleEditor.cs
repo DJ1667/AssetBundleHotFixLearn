@@ -14,6 +14,8 @@ public class BundleEditor
 
     private static string ABCONFIGPATH = "Assets/AssetBundleFram/Config/ABConfig.asset";
 
+    private static ABConfig m_ABConfig = null;
+
     //所有AB包的路径
     private static List<string> m_AllFileAbPathList = new List<string>();
 
@@ -33,15 +35,15 @@ public class BundleEditor
     {
         m_AllFileAbPathList.Clear();
         m_ConfigFilePath.Clear();
-        
+
         //key是包名，value是包的路径  所有文件夹ab包Dict
         Dictionary<string, string> allFileDict = new Dictionary<string, string>();
         //单个Prefab的AB包和他依赖的资源
         Dictionary<string, List<string>> allPrefabDict = new Dictionary<string, List<string>>();
 
-        ABConfig abConfig = AssetDatabase.LoadAssetAtPath<ABConfig>(ABCONFIGPATH);
+        m_ABConfig = AssetDatabase.LoadAssetAtPath<ABConfig>(ABCONFIGPATH);
 
-        foreach (var fileDir in abConfig.m_AllFileDirAB)
+        foreach (var fileDir in m_ABConfig.m_AllFileDirAB)
         {
             if (allFileDict.ContainsKey(fileDir.abName))
             {
@@ -56,7 +58,7 @@ public class BundleEditor
         }
 
         //处理所有与预制体相关的资源
-        string[] prefabGuidArray = AssetDatabase.FindAssets("t:Prefab", abConfig.m_PrefabPath.ToArray());
+        string[] prefabGuidArray = AssetDatabase.FindAssets("t:Prefab", m_ABConfig.m_PrefabPath.ToArray());
         for (int i = 0; i < prefabGuidArray.Length; i++)
         {
             var path = AssetDatabase.GUIDToAssetPath(prefabGuidArray[i]);
@@ -106,6 +108,7 @@ public class BundleEditor
         for (int i = 0; i < oldABNames.Length; i++)
         {
             AssetDatabase.RemoveAssetBundleName(oldABNames[i], true);
+
             EditorUtility.DisplayProgressBar("清除AB包名", "名字: " + oldABNames[i], (float) i / oldABNames.Length);
         }
 
@@ -223,7 +226,7 @@ public class BundleEditor
         }
 
         //写入Xml
-        string xmlPath = Application.dataPath + "/AssetBundleConfig.xml";
+        string xmlPath = m_ABConfig.m_XmlPath; //"/AssetBundleConfig.xml";
         if (File.Exists(xmlPath)) File.Delete(xmlPath);
         FileStream fileStream = new FileStream(xmlPath, FileMode.Create, FileAccess.ReadWrite, FileShare.ReadWrite);
         StreamWriter sw = new StreamWriter(fileStream, System.Text.Encoding.UTF8);
@@ -238,7 +241,7 @@ public class BundleEditor
             abBase.Path = "";
         }
 
-        string bytePath = Application.dataPath + "/AssetBundleConfig.bytes"; //修改成可可配置
+        string bytePath = m_ABConfig.m_ABBytePath; //"/AssetBundleConfig.bytes";
         FileStream fs = new FileStream(bytePath, FileMode.Create, FileAccess.ReadWrite, FileShare.ReadWrite);
         fs.Seek(0, SeekOrigin.Begin);
         fs.SetLength(0);

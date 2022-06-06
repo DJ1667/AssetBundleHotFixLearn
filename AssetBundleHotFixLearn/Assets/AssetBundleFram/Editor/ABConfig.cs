@@ -8,6 +8,10 @@ public class ABConfig : ScriptableObject
     public List<string> m_PrefabPath = new List<string>();
     public List<FileDirABName> m_AllFileDirAB = new List<FileDirABName>();
 
+    [Space(20)] public string m_ABBytePath = "Assets/AssetBundleConfig.bytes";
+    public string m_XmlPath = "Assets/AssetBundleConfig.xml";
+
+
     [System.Serializable]
     public class FileDirABName
     {
