@@ -1,0 +1,7 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Patches xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Version="0">
+  <Files Name="assetbundleconfig" Url="http://127.0.0.1/AssetBundle/0.1/1/assetbundleconfig" Platform="StandaloneWindows" MD5="95b44aeb0eebd9a72c8a38d297bde121" Size="1.74414063" />
+  <Files Name="capsule" Url="http://127.0.0.1/AssetBundle/0.1/1/capsule" Platform="StandaloneWindows" MD5="c89306f1035ba25705d95d064b243d30" Size="38.1347656" />
+  <Files Name="cube" Url="http://127.0.0.1/AssetBundle/0.1/1/cube" Platform="StandaloneWindows" MD5="204a0daf8d9fb2292bc8b53523c1704a" Size="38.90039" />
+  <Files Name="StandaloneWindows" Url="http://127.0.0.1/AssetBundle/0.1/1/StandaloneWindows" Platform="StandaloneWindows" MD5="61375976ba589cc5774ea46b59a015a0" Size="1.65039063" />
+</Patches>
