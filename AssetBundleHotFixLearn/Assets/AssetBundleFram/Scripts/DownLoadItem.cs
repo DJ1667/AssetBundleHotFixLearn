@@ -98,7 +98,7 @@ public abstract class DownLoadItem
         get { return m_isStartDownLoad; }
     }
 
-    public DownLoadItem(string url, string savePath, System.Action<DownLoadItem> mONComplete, System.Action<DownLoadItem> mONError)
+    public DownLoadItem(string url, string savePath, System.Action<DownLoadItem> mONComplete = null, System.Action<DownLoadItem> mONError = null)
     {
         m_url = url;
         m_savePath = savePath;

@@ -7,9 +7,9 @@ public class DownLoadAssetBundle : DownLoadItem
 {
     UnityWebRequest m_Request;
 
-    public DownLoadAssetBundle(string url, string name, System.Action<DownLoadItem> mONComplete, System.Action<DownLoadItem> mONError) : base(url,
-        name,
-        mONComplete, mONError)
+    public DownLoadAssetBundle(string url, string savePath, System.Action<DownLoadItem> mONComplete = null,
+        System.Action<DownLoadItem> mONError = null) : base(url,
+        savePath, mONComplete, mONError)
     {
     }
 

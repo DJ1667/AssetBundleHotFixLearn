@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Runtime.Serialization.Formatters.Binary;
 using UnityEngine;
 using UnityEngine.Networking;
@@ -117,7 +118,7 @@ public class HotPatchManager : Singleton<HotPatchManager>
     }
 
     /// <summary>
-    /// 版本检查
+    /// 版本检查  判断是否需要热更
     /// </summary>
     /// <param name="hotCallBack"></param>
     public void CheckVersion(Action<bool> hotCallBack = null)
@@ -148,6 +149,11 @@ public class HotPatchManager : Singleton<HotPatchManager>
             GetHotAB();
 
             ComputeDownLoad();
+
+            LoadFileCount = m_DownLoadList.Count;
+            LoadSumSize = m_DownLoadList.Sum(x => x.Size);
+
+            hotCallBack?.Invoke(m_DownLoadList.Count > 0);
         }));
     }
 
@@ -287,5 +293,155 @@ public class HotPatchManager : Singleton<HotPatchManager>
             m_DownLoadDict.Add(patch.Name, patch);
             m_DownLoadMD5Dict.Add(patch.Name, patch.MD5);
         }
+    }
+
+    /// <summary>
+    /// 开始下载AB包
+    /// </summary>
+    /// <param name="callback"></param>
+    /// <param name="allPatch"></param>
+    /// <returns></returns>
+    public IEnumerator StartDownLoadAB(Action callback, List<Patch> allPatch = null)
+    {
+        m_AlreadyDownLoadList.Clear();
+        StartDownLoad = true;
+
+        if (allPatch == null)
+        {
+            allPatch = m_DownLoadList;
+        }
+
+        if (!Directory.Exists(m_DownLoadPath))
+        {
+            Directory.CreateDirectory(m_DownLoadPath);
+        }
+
+        List<DownLoadAssetBundle> downLoadAssetBundleList = new List<DownLoadAssetBundle>();
+        foreach (var patch in allPatch)
+        {
+            downLoadAssetBundleList.Add(new DownLoadAssetBundle(patch.Url, m_DownLoadPath));
+        }
+
+        foreach (var downLoadAB in downLoadAssetBundleList)
+        {
+            m_CurDownLoad = downLoadAB;
+            yield return m_Mono.StartCoroutine(downLoadAB.DownLoad());
+            Patch patch = FindPatchByGamePath(downLoadAB.FileName);
+            if (patch != null)
+            {
+                m_AlreadyDownLoadList.Add(patch);
+            }
+
+            downLoadAB.Destory();
+        }
+
+        //MD5码校验
+        VerifyMD5(downLoadAssetBundleList, callback);
+    }
+
+
+    /// <summary>
+    /// 对下载完的资源进行MD5校验
+    /// </summary>
+    /// <param name="downLoadAssetBundleList"></param>
+    /// <param name="callback"></param>
+    private void VerifyMD5(List<DownLoadAssetBundle> downLoadAssetBundleList, Action callback)
+    {
+        List<Patch> needDownLoadAgainList = new List<Patch>();
+        foreach (var downLoadAB in downLoadAssetBundleList)
+        {
+            string md5 = "";
+            if (m_DownLoadMD5Dict.TryGetValue(downLoadAB.FileName, out md5))
+            {
+                if (MD5Manager.Instance.BuildFileMd5(downLoadAB.SaveFilePath) != md5)
+                {
+                    Debug.Log($"此文件{downLoadAB.FileName}MD5码校验失败，即将重新下载");
+
+                    Patch patch = FindPatchByGamePath(downLoadAB.FileName);
+                    if (patch != null)
+                    {
+                        needDownLoadAgainList.Add(patch);
+                    }
+                }
+            }
+        }
+
+        if (needDownLoadAgainList.Count <= 0)
+        {
+            m_DownLoadMD5Dict.Clear();
+            if (callback != null)
+            {
+                StartDownLoad = false;
+                callback();
+            }
+
+            LoadOverCallBack?.Invoke();
+        }
+        else
+        {
+            if (m_TryDownLoadCount >= DOWNLOADCOUNT)
+            {
+                StartDownLoad = false;
+                string allName = needDownLoadAgainList.Aggregate("", (current, patch) => current + (patch.Name + ";"));
+
+                Debug.LogError($"资源重复下载{DOWNLOADCOUNT}次失败，请检查资源 " + allName);
+
+                ItemErrorCallBack?.Invoke(allName);
+            }
+            else
+            {
+                m_TryDownLoadCount++;
+                m_DownLoadMD5Dict.Clear();
+                foreach (var patch in needDownLoadAgainList)
+                {
+                    m_DownLoadMD5Dict.Add(patch.Name, patch.MD5);
+                }
+
+                m_Mono.StartCoroutine(StartDownLoadAB(callback, needDownLoadAgainList));
+            }
+        }
+    }
+
+    /// <summary>
+    /// 根据资源名获取Patch补丁信息
+    /// </summary>
+    /// <param name="name"></param>
+    /// <returns></returns>
+    private Patch FindPatchByGamePath(string name)
+    {
+        Patch patch = null;
+        m_DownLoadDict.TryGetValue(name, out patch);
+        return patch;
+    }
+
+    /// <summary>
+    /// 获取下载进度
+    /// </summary>
+    /// <returns></returns>
+    public float GetProgress()
+    {
+        return GetLoadSize() / LoadSumSize;
+    }
+
+    /// <summary>
+    /// 获取已下载的内容大小
+    /// </summary>
+    /// <returns></returns>
+    public float GetLoadSize()
+    {
+        float alreadySize = m_AlreadyDownLoadList.Sum(x => x.Size);
+        float curAlreadySize = 0;
+
+        if (m_CurDownLoad != null)
+        {
+            Patch patch = FindPatchByGamePath(m_CurDownLoad.FileName);
+
+            if (patch != null && !m_AlreadyDownLoadList.Contains(patch))
+            {
+                curAlreadySize = m_CurDownLoad.GetProcess() + patch.Size;
+            }
+        }
+
+        return (alreadySize + curAlreadySize);
     }
 }
