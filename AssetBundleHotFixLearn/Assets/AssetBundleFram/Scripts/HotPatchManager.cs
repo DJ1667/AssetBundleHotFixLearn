@@ -135,7 +135,6 @@ public class HotPatchManager : Singleton<HotPatchManager>
                 return;
             }
 
-
             foreach (var versionInfo in m_ServerInfo.GameVersion)
             {
                 //找到当前大版本对应的热更内容
@@ -189,7 +188,7 @@ public class HotPatchManager : Singleton<HotPatchManager>
     private IEnumerator ReadXml(Action callback)
     {
         //服务器热更信息配置文件
-        string xmlUrl = "http://127.0.0.1/ServerInfo.xml";
+        string xmlUrl = "http://127.0.0.1/AssetBundleHotFixLearn/ServerInfo.xml";
 
         var webRequest = UnityWebRequest.Get(xmlUrl);
         webRequest.timeout = 30;
@@ -282,6 +281,8 @@ public class HotPatchManager : Singleton<HotPatchManager>
             string md5 = MD5Manager.Instance.BuildFileMd5(filePath);
             if (patch.MD5 != md5)
             {
+                // Debug.Log($"需要下载：{patch.Url}");
+                
                 m_DownLoadList.Add(patch);
                 m_DownLoadDict.Add(patch.Name, patch);
                 m_DownLoadMD5Dict.Add(patch.Name, patch.MD5);
@@ -289,6 +290,8 @@ public class HotPatchManager : Singleton<HotPatchManager>
         }
         else
         {
+            // Debug.Log($"需要下载：{patch.Url}");
+            
             m_DownLoadList.Add(patch);
             m_DownLoadDict.Add(patch.Name, patch);
             m_DownLoadMD5Dict.Add(patch.Name, patch.MD5);
@@ -382,7 +385,7 @@ public class HotPatchManager : Singleton<HotPatchManager>
             if (m_TryDownLoadCount >= DOWNLOADCOUNT)
             {
                 StartDownLoad = false;
-                string allName = needDownLoadAgainList.Aggregate("", (current, patch) => current + (patch.Name + ";"));
+                string allName = needDownLoadAgainList.Aggregate("", (current, patch) => current + (patch.Name + "/"));
 
                 Debug.LogError($"资源重复下载{DOWNLOADCOUNT}次失败，请检查资源 " + allName);
 
@@ -420,14 +423,14 @@ public class HotPatchManager : Singleton<HotPatchManager>
     /// <returns></returns>
     public float GetProgress()
     {
-        return GetLoadSize() / LoadSumSize;
+        return GetAlreadyDownLoadSize() / LoadSumSize;
     }
 
     /// <summary>
     /// 获取已下载的内容大小
     /// </summary>
     /// <returns></returns>
-    public float GetLoadSize()
+    public float GetAlreadyDownLoadSize()
     {
         float alreadySize = m_AlreadyDownLoadList.Sum(x => x.Size);
         float curAlreadySize = 0;
@@ -443,5 +446,128 @@ public class HotPatchManager : Singleton<HotPatchManager>
         }
 
         return (alreadySize + curAlreadySize);
+    }
+
+    /// <summary>
+    /// 计算需要解压的文件 (只有安卓需要解压，因为安卓不能直接读取streamingAssetsPath目录下的文件，要用WWW读取，所以先读取出来存到另一个地方)
+    /// 热更之前，先把本地的AB包资源解压到一个可以直接读取的文件夹
+    /// </summary>
+    /// <returns></returns>
+    public bool ComputeUnPackFile()
+    {
+#if UNITY_ANDROID
+        if (!Directory.Exists(m_UnPackPath))
+        {
+            Directory.CreateDirectory(m_UnPackPath);
+        }
+
+        m_UnPackedList.Clear();
+        foreach (var fileName in m_PackedMd5.Keys)
+        {
+            var filePath = m_UnPackPath + "/" + fileName;
+            if (File.Exists(filePath))
+            {
+                string md5 = MD5Manager.Instance.BuildFileMd5(filePath);
+                if (m_PackedMd5[fileName].MD5 != md5)
+                {
+                    m_UnPackedList.Add(fileName);
+                }
+            }
+            else
+            {
+                m_UnPackedList.Add(fileName);
+            }
+        }
+
+        foreach (var fileName in m_UnPackedList)
+        {
+            if (m_PackedMd5.ContainsKey(fileName))
+            {
+                UnPackSumSize += m_PackedMd5[fileName].Size;
+            }
+        }
+
+        return m_UnPackedList.Count > 0;
+#else
+        return false;
+#endif
+    }
+
+    /// <summary>
+    /// 开始解压
+    /// </summary>
+    /// <param name="callback"></param>
+    public void StartUnPackFile(Action callback)
+    {
+        StartUnPack = true;
+        m_Mono.StartCoroutine(UnPackToPersistentDataPath(callback));
+    }
+
+    /// <summary>
+    /// 将包里的原始资源解压到本地
+    /// </summary>
+    /// <param name="callback"></param>
+    /// <returns></returns>
+    IEnumerator UnPackToPersistentDataPath(Action callback)
+    {
+        foreach (var fileName in m_UnPackedList)
+        {
+            string targetPath = $"{Application.streamingAssetsPath}/{fileName}";
+
+#if !UNITY_EDITOR && UNITY_ANDROID
+            targetPath = $"{Application.streamingAssetsPath}/{fileName}";
+#endif
+            targetPath = $"file://{Application.streamingAssetsPath}/{fileName}";
+#if UNITY_IOS || UNITY_IPHONE
+#endif
+
+            UnityWebRequest unityWebRequest = UnityWebRequest.Get(targetPath);
+            unityWebRequest.timeout = 30;
+            yield return unityWebRequest.SendWebRequest();
+            if (unityWebRequest.isNetworkError)
+            {
+                Debug.Log("解压错误: " + unityWebRequest.error);
+            }
+            else
+            {
+                byte[] bytes = unityWebRequest.downloadHandler.data;
+                FileTool.CreateFile(m_UnPackPath + "/" + fileName, bytes);
+            }
+
+            if (m_PackedMd5.ContainsKey(fileName))
+            {
+                AlreadyUnPackSize += m_PackedMd5[fileName].Size;
+            }
+
+            unityWebRequest.Dispose();
+        }
+
+        callback?.Invoke();
+
+        StartUnPack = false;
+    }
+
+    /// <summary>
+    /// 获取解压进度
+    /// </summary>
+    /// <returns></returns>
+    public float GetUnpackProgress()
+    {
+        return AlreadyUnPackSize / UnPackSumSize;
+    }
+
+    /// <summary>
+    /// 获取AB包路径
+    /// </summary>
+    /// <param name="name"></param>
+    /// <returns></returns>
+    public string ComputeABPath(string name)
+    {
+        Patch patch = null;
+        m_HotFixDict.TryGetValue(name, out patch);
+        if (patch != null)
+            return m_DownLoadPath + "/" + name;
+
+        return "";
     }
 }

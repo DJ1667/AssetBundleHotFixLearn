@@ -546,7 +546,7 @@ public class BundleEditor
             patch.Name = fileInfo.Name;
             patch.Platform = EditorUserBuildSettings.activeBuildTarget.ToString();
             patch.MD5 = MD5Manager.Instance.BuildFileMd5(fileInfo.FullName);
-            patch.Url = "http://127.0.0.1/AssetBundle/" + PlayerSettings.bundleVersion + "/" + hotCount + "/" + fileInfo.Name;
+            patch.Url = "http://127.0.0.1/AssetBundleHotFixLearn/AssetBundle/" + PlayerSettings.bundleVersion + "/" + hotCount + "/" + fileInfo.Name;
             patch.Size = fileInfo.Length / 1024f;
             patches.Files.Add(patch);
         }
